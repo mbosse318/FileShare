@@ -1,0 +1,34 @@
+Built 2 unit test files - one for adds and one for updates
+The updates unit test input file needs to be updated using the IDs of the results of the adds
+I used some find and replace steps on the add log file to get the list of group names and IDs that were added and then drop those into a spreadsheet that has some lookups to give me the input for the update unit tests.
+
+	1. Misspellings
+		a. Some variable names, some parameters, some comments
+		b. Looks like an OCR attempt to generate the code
+		c. Examples:
+			i. -ForegroundColor switch misspelled so the color was not right on the message and the misspelling was written to the output.
+			ii. $todaysdate variable was misspelled, which caused the log file to be missing the date/time stamp.
+	2. Unnecessary code
+		a. Import-Module Microsoft.Graph.Groups called in multiple places - really only needed once in the whole script
+	3. Missing code:
+		a. block of code for collecting results in the ProcessGroups method.  As a result, all the stats at the end are blank.
+		b. Param () block missing on the AddGroup and UpdateGroup functions
+	4. Cmdlets to add or update a group does not throw an terminating error when the membership rule has invalid characters or property names like the AzureAD cmdlets did. As a result, these bad membership rules are not getting caught and the script counts them as added or updated.
+	5. Formatting: indentation is not consistent.  Makes the code harder to read.  Simple to open the script in VS Code, ensure you have the PowerShell module installed, and then format the document. 
+		a. VS Code also helps find issues in the code like unused variables or recommended ways to rewrite the code.
+	6. Some indentation in the logging was lost, so it does not have the same hierarchy and readability.
+	7. Row number in output is off by one.
+
+In testing while reviewing, I found that:
+	1. We don't need to get the context and output it.  That happens automatically on the call to Disconnect-MgGraph.  That code can come out.
+
+Overall - 
+Got all of the AzureAD cmdlets removed and figured out the MgGraph equivalent.  Good job there.
+
+More of the code was redone than was necessary.  it looks like a lot of the code was moved around and refactored - even code that had no need to be changed to support MgGraph.  In some cases that refactoring introduced errors.
+
+There were some failures/errors in the code for some conditions.  More through unit testing could have been done.
+<Need to list specifics here>
+
+Recommended approach:
+Take from the updated script only those parts that are related to using the MgGraph module and replace just that code in the original script.
