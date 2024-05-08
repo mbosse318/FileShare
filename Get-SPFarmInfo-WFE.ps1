@@ -589,7 +589,6 @@ function Is-InScope-Finding
 "SQL Server Availablity Group Cluster",
 "SQL Server Availablity Groups",
 "SQL Server Availablity Replicas",
-"SQL Server Availablity Databases",
 "SQL Server Availablity Group Listeners",
 "Farm Administrators",
 "Managed Accounts",
@@ -612,6 +611,10 @@ function Is-InScope-Finding
 "Kerberos configuration",
 "SQL Service Accounts"
     )
+
+<#
+"SQL Server Availablity Databases" - removed because of duplicates making it difficult to report real drift
+#>
 
     $result = $InScopeFindingNames.Contains($FindingName)
 
@@ -641,7 +644,6 @@ function Write-DiagnosticFindingFragment-WFE
         $htmlFragment = ""
 
         if ((Is-InScope-Finding -FindingName $Finding.Name) -and ($null -ne $Finding.InputObject)) {
-#            $htmlFragment = "`n`n$($Finding.Name) : "
             # dump out the input object if there is one
             if ($null -ne $Finding.InputObject) {
                 # normalize to an array
@@ -651,20 +653,12 @@ function Write-DiagnosticFindingFragment-WFE
                 else {
                     $InputObject = $Finding.InputObject
                 }
-#                $htmlFragment += $InputObject.Length
                 $count = 0
                 foreach ($obj in $InputObject) {
 
                     $label = "$($Finding.Name)$($count.ToString("D5"))"
-                    $htmlFragment += "`n$($label) : $($obj)"
+                    $htmlFragment += "`n$($label) : $($obj | ConvertTo-Json -Compress)"
                     $count += 1
-<#
-                    foreach($prop in $obj | Get-Member) { 
-                        if ($prop.MemberType -eq "NoteProperty") {
-                            $htmlFragment += "`n$($prop.Name): $($obj.$($prop.Name))"
-                        }
-                    }
-#>
                 }
             }
             else {
