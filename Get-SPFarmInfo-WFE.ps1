@@ -285,7 +285,9 @@ function New-DiagnosticFinding
     }
 
     #Write-Host ("{0} Generating finding -- {1}" -f $findingTime, $Name)
-    Write-Host ("Generating finding -- {0}" -f $Name)
+    #WF Change
+    Write-LogEntry ("Generating finding -- {0}" -f $Name)
+    #Write-Host ("Generating finding -- {0}" -f $Name)
 
     $finding = New-Object SPDiagnostics.Finding
     $finding.Name = $Name
@@ -307,6 +309,10 @@ function New-DiagnosticFinding
 
     return $finding
 }
+
+
+#WF Change
+#region WFE Specific Code
 
 function EnsureFolder {
     param(
@@ -354,6 +360,163 @@ function Write-LogEntry {
     $logLine = "$("{0:yyyy-MM-dd_HH-mm-ss}`t" -f (Get-Date))$($logEntry)"
     Write-Host $logLine
 }
+
+function Confirm-InScope-Finding
+{
+    [CmdletBinding()]
+    param (
+        [Parameter(Mandatory=$true)]
+        [string]
+        $FindingName
+    )
+
+    $InScopeFindingNames = @(
+"Microsoft Support Lifecycle Information",
+"Sharepoint SE Product Servicing Policy",
+"Farm configuration",
+"Farm Info",
+"Servers in Farm",
+"Missing Patches",
+"Sql Aliases",
+"Windows Services on Server(s)",
+"Local group members on servers",
+"SQL Servers",
+"SP Managed Accounts SQL Permissions",
+"Database Information",
+"Mirrored Databases",
+"SQL Server Always On",
+"SQL Server Availablity Group Cluster",
+"SQL Server Availablity Groups",
+"SQL Server Availablity Replicas",
+"SQL Server Availablity Group Listeners",
+"Farm Administrators",
+"Managed Accounts",
+"Services in Farm",
+"Service Instances on Server(s)",
+"Service Applications",
+"Service Application Proxies",
+"Proxy Group Associations",
+"Trusted Root Authorities",
+"Sync Connections: User Profile Service Application",
+"User Profile Service",
+"Service Application Pools",
+"Timer Service Instances",
+"Administration Service Instances",
+"Timer and Admin Service Information",
+"SharePoint Health Analyzer",
+"Web Applications & AAMs",
+"Content Application Pools",
+"Web Config Modifications",
+"Kerberos configuration",
+"SQL Service Accounts"
+    )
+
+    $result = $InScopeFindingNames.Contains($FindingName)
+
+    return $result
+}
+
+function Write-DiagnosticFindingFragment-WF
+{
+    [CmdletBinding()]
+    param (
+        [Parameter(Mandatory=$false,ValueFromPipeline=$true)]
+        [SPDiagnostics.Finding]
+        $Finding,
+        [SPDiagnostics.OutputFormat]
+        $OutputFormat=[SPDiagnostics.OutputFormat]::HTML,
+        [switch]$ExcludeChildFindings,
+        [Parameter(Mandatory=$false)]
+        [int] $Index
+
+    )
+
+    try
+    {
+        if($null -eq $Finding)
+        {
+            return
+        }
+
+        # dump details for this finding
+        $htmlFragment = ""
+
+        if ((Confirm-InScope-Finding -FindingName $Finding.Name) -and ($null -ne $Finding.InputObject)) {
+            # dump out the input object if there is one
+            if ($null -ne $Finding.InputObject) {
+                # normalize to an array
+                if (!($Finding.InputObject -is [array])) {
+                    $InputObject = @($Finding.InputObject)
+                }
+                else {
+                    $InputObject = $Finding.InputObject
+                }
+                $count = 0
+                foreach ($obj in $InputObject) {
+
+                    $label = "$($Finding.Name)-$($Index.ToString("D5"))-$($count.ToString("D5"))"
+                    $htmlFragment += "`n$($label) : $($obj | ConvertTo-Json -Compress)"
+                    $count += 1
+                }
+            }
+            else {
+                $htmlFragment += "0"
+            }
+        }            
+
+        # recurse through the child findings
+        $index = 0
+        foreach($child in $Finding.ChildFindings)
+        {
+            $childContent = Write-DiagnosticFindingFragment-WF -Finding $child -OutputFormat $OutputFormat -Index $index
+            $htmlFragment += $childContent
+            $index += 1
+        }
+
+       return $htmlFragment
+    }
+    catch
+    {
+        Write-Error $_
+        return $null
+    }
+}
+
+function Write-DiagnosticReport-WF
+{
+    [CmdletBinding()]
+    param (
+        [Parameter(Mandatory=$true)]
+        [SPDiagnostics.Finding[]]
+        $Findings, 
+        [Parameter(Mandatory=$false)]
+        [SPDiagnostics.OutputFormat]$OutputFormat=[SPDiagnostics.OutputFormat]::HTML
+    )
+
+    $html = ""
+    
+    foreach($finding in $Findings)
+    {
+        if($null -eq $finding)
+        {
+            continue
+        }
+        try
+        {
+            $fragment = Write-DiagnosticFindingFragment-WF -Finding $finding -OutputFormat $OutputFormat
+            $html+=$fragment
+        }
+        catch
+        {
+            Write-Warning $_
+        }
+    }
+
+    return $html
+}
+
+#endregion
+
 
 # Creates a new FindingCollection for ease of use, TBD whether this is necessary or not
 function New-DiagnosticFindingCollection
@@ -560,159 +723,6 @@ function Write-DiagnosticFindingFragment
         Write-Error $_
         return $null
     }
-}
-
-function Is-InScope-Finding
-{
-    [CmdletBinding()]
-    param (
-        [Parameter(Mandatory=$true)]
-        [string]
-        $FindingName
-    )
-
-    $InScopeFindingNames = @(
-"Microsoft Support Lifecycle Information",
-"Sharepoint SE Product Servicing Policy",
-"Farm configuration",
-"Farm Info",
-"Servers in Farm",
-"Missing Patches",
-"Sql Aliases",
-"Windows Services on Server(s)",
-"Local group members on servers",
-"SQL Servers",
-"SP Managed Accounts SQL Permissions",
-"Database Information",
-"Mirrored Databases",
-"SQL Server Always On",
-"SQL Server Availablity Group Cluster",
-"SQL Server Availablity Groups",
-"SQL Server Availablity Replicas",
-"SQL Server Availablity Group Listeners",
-"Farm Administrators",
-"Managed Accounts",
-"Services in Farm",
-"Service Instances on Server(s)",
-"Service Applications",
-"Service Application Proxies",
-"Proxy Group Associations",
-"Trusted Root Authorities",
-"Sync Connections: User Profile Service Application",
-"User Profile Service",
-"Service Application Pools",
-"Timer Service Instances",
-"Administration Service Instances",
-"Timer and Admin Service Information",
-"SharePoint Health Analyzer",
-"Web Applications & AAMs",
-"Content Application Pools",
-"Web Config Modifications",
-"Kerberos configuration",
-"SQL Service Accounts"
-    )
-
-<#
-"SQL Server Availablity Databases" - removed because of duplicates making it difficult to report real drift
-#>
-
-    $result = $InScopeFindingNames.Contains($FindingName)
-
-    return $result
-}
-
-function Write-DiagnosticFindingFragment-WFE
-{
-    [CmdletBinding()]
-    param (
-        [Parameter(Mandatory=$false,ValueFromPipeline=$true)]
-        [SPDiagnostics.Finding]
-        $Finding,
-        [SPDiagnostics.OutputFormat]
-        $OutputFormat=[SPDiagnostics.OutputFormat]::HTML,
-        [switch]$ExcludeChildFindings
-    )
-
-    try
-    {
-        if($null -eq $Finding)
-        {
-            return
-        }
-
-        # dump details for this finding
-        $htmlFragment = ""
-
-        if ((Is-InScope-Finding -FindingName $Finding.Name) -and ($null -ne $Finding.InputObject)) {
-            # dump out the input object if there is one
-            if ($null -ne $Finding.InputObject) {
-                # normalize to an array
-                if (!($Finding.InputObject -is [array])) {
-                    $InputObject = @($Finding.InputObject)
-                }
-                else {
-                    $InputObject = $Finding.InputObject
-                }
-                $count = 0
-                foreach ($obj in $InputObject) {
-
-                    $label = "$($Finding.Name)$($count.ToString("D5"))"
-                    $htmlFragment += "`n$($label) : $($obj | ConvertTo-Json -Compress)"
-                    $count += 1
-                }
-            }
-            else {
-                $htmlFragment += "0"
-            }
-        }            
-
-        # recurse through the child findings
-        foreach($child in $Finding.ChildFindings)
-        {
-            $childContent = Write-DiagnosticFindingFragment-WFE -Finding $child -OutputFormat $OutputFormat
-            $htmlFragment += $childContent
-        }
-
-       return $htmlFragment
-    }
-    catch
-    {
-        Write-Error $_
-        return $null
-    }
-}
-
-function Write-DiagnosticReport-WFE
-{
-    [CmdletBinding()]
-    param (
-        [Parameter(Mandatory=$true)]
-        [SPDiagnostics.Finding[]]
-        $Findings, 
-        [Parameter(Mandatory=$false)]
-        [SPDiagnostics.OutputFormat]$OutputFormat=[SPDiagnostics.OutputFormat]::HTML
-    )
-
-    $html = ""
-    
-    foreach($finding in $Findings)
-    {
-        if($null -eq $finding)
-        {
-            continue
-        }
-        try
-        {
-            $fragment = Write-DiagnosticFindingFragment-WFE -Finding $finding -OutputFormat $OutputFormat
-            $html+=$fragment
-        }
-        catch
-        {
-            Write-Warning $_
-        }
-    }
-
-    return $html
 }
 
 #Core function to write html report
@@ -6850,6 +6860,7 @@ function Get-SPDiagnosticsSearchHealthCheck()
         }    
         if (!$script:primaryAdmin)
         {
+            #WF Change
             Write-LogEntry "Search component health state check failed. Recommended action: Ensure that at least one admin component is operational."
             # Write-Host "Search component health state check failed. Recommended action: Ensure that at least one admin component is operational."
         }
@@ -7936,6 +7947,7 @@ function Select-SPDiagnosticSSA
         $menu = @{}
         for($i=1;$i -le $ssas.count; $i++)
         {
+            #WF Change
             Write-LogEntry "$i. $($ssas[$i-1].name)"
             # Write-Host "$i. $($ssas[$i-1].name)"
             $menu.Add($i,($ssas[$i-1].name))
@@ -8219,6 +8231,7 @@ function Get-SPDiagnosticUsageAndReportingInformation($siteUrl)
                 $jobDefinitionFinding.WarningMessage += "$jobname is disabled"
             }elseif($RunNow)
             {
+                #WF Change
                 Write-LogEntry " Running Job: $job now"
                 # Write-Host " Running Job: $job now"
                 $job.RunNow()
@@ -10664,6 +10677,7 @@ function Write-ScriptParameterMenu
     }
 
     $message += "`r`n"
+    #WF Change
     Write-LogEntry $message
     # Write-Host $message
 
@@ -10698,22 +10712,15 @@ function main
     [cmdletbinding()]
     Param()
 
-    # Bosse Bypass
+    #WF Change
     #Write-ScriptDisclaimer
 
     #Retrieve list of diags (switches) to run
-    # Bosse bypass
     #Write-ScriptParameterMenu
-
-
     $logPath = Get-LogPath
     Start-Transcript -Path $logPath
-    
-#    $outputPath = Get-DateTimeOutputPath
     $outputPath = Get-OutputPath
     EnsureFolder -Path $outputPath
-    
-  
 
     #Temporarily disabling the progress bar. Note this does not work properly in this script without using the $Global prefix 
     $oldProgress = $global:ProgressPreference
@@ -10889,7 +10896,7 @@ function main
         $fileName = $fileName + "TLS_"
     }
 
-    # Mike and Kory Update
+#WF Change
     # Update outut location
     $fileName = "{0}\$fileName{1}_{2}" -f $OutputPath, $build, [datetime]::Now.ToString("yyyy_MM_dd_HH_mm_ss")
     #$fileName = "{0}\$fileName{1}_{2}" -f $ENV:UserProfile, $build, [datetime]::Now.ToString("yyyy_MM_dd_HH_mm")
@@ -10901,9 +10908,10 @@ function main
     }
     else
     {
-#WFE
+#WF Change
 #        $diagnosticContent = Write-DiagnosticReport -Findings $rootFindingCollection
-        $diagnosticContent = Write-DiagnosticReport-WFE -Findings $rootFindingCollection
+#        $fileName = $fileName + ".html"
+        $diagnosticContent = Write-DiagnosticReport-WF -Findings $rootFindingCollection
         $fileName = $fileName + ".txt"
     }
   
