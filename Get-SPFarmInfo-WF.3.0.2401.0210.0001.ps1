@@ -348,7 +348,7 @@ function Get-OutputPath {
 function Get-LogPath {
     $currentDateTime = "{0:yyyy-MM-dd_HH-mm-ss}" -f (Get-Date)
     $basePath = (EnsureTrainingBackslash (Get-OutputPath))
-    return "$($basePath)SPFarmInfo-SPSE-$($EnvironmentToken)-$($currentDateTime).log"
+    return "$($basePath)SPFarmInfo-$($EnvironmentToken)-SPSE-$($currentDateTime).log"
 }
 
 function Get-DateTimeOutputPath {
@@ -11017,7 +11017,7 @@ function main
 
 #WF Change
     # Update outut location
-    $fileName = "{0}\$fileName{1}-{2}-{3}" -f $OutputPath, $build, $EnvironmentToken, [datetime]::Now.ToString("yyyy-MM-dd_HH-mm-ss")
+    $fileName = "{0}\$fileName{1}-{2}-{3}" -f $OutputPath, $EnvironmentToken, $build, [datetime]::Now.ToString("yyyy-MM-dd_HH-mm-ss")
     #$fileName = "{0}\$fileName{1}_{2}" -f $ENV:UserProfile, $build, [datetime]::Now.ToString("yyyy_MM_dd_HH_mm")
 
     if($text)
