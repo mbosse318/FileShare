@@ -413,7 +413,7 @@ function Get-FindingUniqueAttribute {
     [hashtable]$FindingUniqueAttributes = @{
         Administration_Service_Instances = @("Id");
         Content_Application_Pools = @("AppPool Name");
-        Database_Information = @("DB_ID");
+        Database_Information = @("Database Name");
         Farm_Info = @("ConfigDbId");
         Local_group_members_on_servers = @("Server","Group","Account");
         Proxy_Group_Associations = @("Proxy");
