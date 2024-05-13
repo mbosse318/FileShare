@@ -76,7 +76,10 @@ param(
     [switch]$Obfuscate,
 
     [Parameter(Position=15,HelpMessage="Verbose log entries will be written to the log.")]
-    [switch]$VerboseLogging
+    [switch]$VerboseLogging,
+
+    [Parameter(Position=16,HelpMessage="Specifies the environment in which the script is running: DEV, UAT, PROD, BCP .")]
+    [string]$EnvironmentToken="PROD"
 )
 
 if([System.IntPtr]::Size -lt 8)
@@ -345,7 +348,7 @@ function Get-OutputPath {
 function Get-LogPath {
     $currentDateTime = "{0:yyyy-MM-dd_HH-mm-ss}" -f (Get-Date)
     $basePath = (EnsureTrainingBackslash (Get-OutputPath))
-    return "$($basePath)SPFarmInfo-SPSE-$($currentDateTime).log"
+    return "$($basePath)SPFarmInfo-SPSE-$($EnvironmentToken)-$($currentDateTime).log"
 }
 
 function Get-DateTimeOutputPath {
@@ -11014,7 +11017,7 @@ function main
 
 #WF Change
     # Update outut location
-    $fileName = "{0}\$fileName{1}-{2}" -f $OutputPath, $build, [datetime]::Now.ToString("yyyy-MM-dd_HH-mm-ss")
+    $fileName = "{0}\$fileName{1}-{2}-{3}" -f $OutputPath, $build, $EnvironmentToken, [datetime]::Now.ToString("yyyy-MM-dd_HH-mm-ss")
     #$fileName = "{0}\$fileName{1}_{2}" -f $ENV:UserProfile, $build, [datetime]::Now.ToString("yyyy_MM_dd_HH_mm")
 
     if($text)
