@@ -340,6 +340,7 @@ function EnsureTrainingBackslash($string) {
 }
 
 function Get-OutputPath {
+#    $outputPath = "D:\Tools\Scripts\Output\SPSEConfig"
     $outputPath = "C:\Scripts\Output\Get-SPFarmInfo-WF"
 #   $outputPath = "\\SP-S-V-300\SPOTenant$"
     return $outputPath
@@ -471,7 +472,6 @@ function Confirm-InScope-Finding
         "Local group members on servers",
         "Proxy Group Associations",
         "SP Managed Accounts SQL Permissions",
-        "SQL Server Availablity Databases",
         "SQL Server Availablity Groups",
         "SQL Server Availablity Group Cluster",
         "SQL Server Availablity Group Listeners",
@@ -495,10 +495,7 @@ Findings out of scope for now
 "SQL Servers",
 "Mirrored Databases",
 "SQL Server Always On",
-"SQL Server Availablity Group Cluster",
-"SQL Server Availablity Groups",
-"SQL Server Availablity Replicas",
-"SQL Server Availablity Group Listeners",
+"SQL Server Availablity Databases",
 "Service Application Proxies",
 "Farm Administrators",
 "Managed Accounts",
